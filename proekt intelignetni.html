@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="mk">
+<head>
+    <meta charset="UTF-8">
+    <title>SmartQuiz Generator</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; }
+        textarea { width: 100%; height: 150px; margin-bottom: 10px; }
+        button { background: #007bff; color: white; border: none; padding: 10px 20px; cursor: pointer; }
+        .quiz-container { margin-top: 20px; border-top: 1px solid #ccc; padding-top: 20px; }
+    </style>
+</head>
+<body>
+    <h2>SmartQuiz Generator</h2>
+    <textarea id="userInput" placeholder="Внеси ја лекцијата тука..."></textarea>
+    <button onclick="generateQuiz()">Генерирај Квиз</button>
+
+    <div id="quizResult" class="quiz-container"></div>
+
+    <script>
+        async function generateQuiz() {
+            const text = document.getElementById('userInput').value;
+            const resultDiv = document.getElementById('quizResult');
+            resultDiv.innerHTML = "Се генерира... почекајте малку.";
+
+            try {
+                const response = await fetch('http://127.0.0.1:5000/generate-quiz', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: text })
+                });
+
+                const data = await response.json();
+                displayQuiz(data.quiz);
+            } catch (error) {
+                resultDiv.innerHTML = "Грешка при поврзување со серверот.";
+            }
+        }
+
+        function displayQuiz(questions) {
+            const resultDiv = document.getElementById('quizResult');
+            resultDiv.innerHTML = "";
+            
+            questions.forEach((q, index) => {
+                let html = `<p><strong>${index + 1}. ${q.question}</strong></p>`;
+                q.options.forEach(opt => {
+                    html += `<input type="radio" name="q${index}" value="${opt}"> ${opt}<br>`;
+                });
+                html += `<p style="color: grey; font-size: 0.9em;"><em>Објаснување: ${q.explanation}</em></p>`;
+                resultDiv.innerHTML += html;
+            });
+        }
+    </script>
+</body>
+</html>
