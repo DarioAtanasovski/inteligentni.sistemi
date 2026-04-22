@@ -2,33 +2,34 @@
 <html lang="mk">
 <head>
     <meta charset="UTF-8">
-    <title>SmartQuiz Generator</title>
+    <title>SmartQuiz Pro - Генератор</title>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 700px; margin: 50px auto; padding: 20px; background-color: #f4f7f6; }
-        .container { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 800px; margin: 40px auto; padding: 20px; background-color: #f0f2f5; }
+        .container { background: white; padding: 30px; border-radius: 15px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
         h2 { color: #333; text-align: center; }
-        textarea { width: 100%; height: 150px; margin-bottom: 15px; padding: 10px; border: 1px solid #ddd; border-radius: 8px; resize: vertical; }
-        button { background: #007bff; color: white; border: none; padding: 12px 25px; border-radius: 6px; cursor: pointer; width: 100%; font-size: 16px; transition: 0.3s; }
-        button:hover { background: #0056b3; }
-        .quiz-container { margin-top: 30px; border-top: 2px solid #eee; padding-top: 20px; }
-        .question-block { margin-bottom: 25px; padding: 15px; background: #fff; border: 1px solid #eee; border-radius: 8px; }
-        input[type="text"] { width: 90%; padding: 8px; margin-top: 10px; border: 1px solid #ccc; border-radius: 4px; }
-        .check-btn { background: #28a745; margin-top: 20px; }
-        .check-btn:hover { background: #218838; }
-        .result { font-weight: bold; font-size: 1.2em; text-align: center; margin-top: 20px; color: #007bff; }
+        textarea#userInput { width: 100%; height: 150px; margin-bottom: 15px; padding: 12px; border: 1px solid #ddd; border-radius: 8px; resize: vertical; box-sizing: border-box; }
+        button.main-btn { background: #007bff; color: white; border: none; padding: 15px; border-radius: 8px; cursor: pointer; width: 100%; font-size: 16px; font-weight: bold; }
+        .question-block { margin-bottom: 25px; padding: 20px; background: #fff; border: 1px solid #eee; border-radius: 10px; border-left: 6px solid #007bff; }
+        input[type="text"], textarea.answer-box { width: 100%; padding: 10px; margin-top: 10px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
+        textarea.answer-box { height: 100px; resize: none; }
+        .check-btn { background: #28a745; color: white; border: none; padding: 15px; border-radius: 8px; cursor: pointer; width: 100%; font-size: 16px; margin-top: 20px; }
+        .feedback { margin-top: 12px; font-size: 0.95em; line-height: 1.4; }
         .correct { color: #28a745; font-weight: bold; }
         .wrong { color: #dc3545; font-weight: bold; }
+        .partial { color: #fd7e14; font-weight: bold; }
+        label { display: block; margin: 10px 0; cursor: pointer; padding: 5px; border-radius: 4px; transition: 0.2s; }
+        label:hover { background: #f8f9fa; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>SmartQuiz Generator</h2>
-    <textarea id="userInput" placeholder="Внеси ја лекцијата тука... (на пр. текст за CSS, биологија, историја)"></textarea>
-    <button onclick="generateQuiz()">Генерирај Квиз</button>
+    <h2>SmartQuiz Pro</h2>
+    <textarea id="userInput" placeholder="Внеси го текстот за учење тука..."></textarea>
+    <button class="main-btn" onclick="generateQuiz()">ГЕНЕРИРАЈ ТЕСТ</button>
 
-    <div id="quizResult" class="quiz-container"></div>
-    <div id="scoreArea"></div>
+    <div id="quizResult" style="margin-top: 30px;"></div>
+    <div id="scoreArea" style="text-align: center; margin-top: 20px;"></div>
 </div>
 
 <script>
@@ -37,15 +38,13 @@
     async function generateQuiz() {
         const text = document.getElementById('userInput').value;
         const resultDiv = document.getElementById('quizResult');
-        const scoreArea = document.getElementById('scoreArea');
         
         if (!text || text.length < 20) {
-            alert("Ве молиме внесете подолг текст.");
+            alert("Внеси подолг текст за да генерираме прашања!");
             return;
         }
 
-        resultDiv.innerHTML = "<p style='text-align:center;'>Се генерира... почекајте малку.</p>";
-        scoreArea.innerHTML = "";
+        resultDiv.innerHTML = "<p style='text-align:center;'>Се подготвуваат прашањата...</p>";
 
         try {
             const response = await fetch('http://127.0.0.1:5000/generate-quiz', {
@@ -53,65 +52,92 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ text: text })
             });
-
             const data = await response.json();
             currentQuestions = data.quiz;
-            displayQuiz(currentQuestions);
+            displayQuiz();
         } catch (error) {
-            resultDiv.innerHTML = "<p class='wrong'>Грешка при поврзување со серверот. Проверете дали Python апликацијата работи.</p>";
+            resultDiv.innerHTML = "<p class='wrong'>Грешка: Провери дали Python серверот е вклучен!</p>";
         }
     }
 
-    function displayQuiz(questions) {
+    function displayQuiz() {
         const resultDiv = document.getElementById('quizResult');
         resultDiv.innerHTML = "";
         
-        questions.forEach((q, index) => {
+        currentQuestions.forEach((q, index) => {
             let html = `<div class="question-block">`;
             html += `<p><strong>${index + 1}. ${q.question}</strong></p>`;
             
             if (q.type === 'choice') {
                 q.options.forEach(opt => {
-                    html += `<label style="display:block; margin: 5px 0;"><input type="radio" name="q${index}" value="${opt}"> ${opt}</label>`;
+                    html += `<label><input type="radio" name="q${index}" value="${opt}"> ${opt}</label>`;
                 });
+            } else if (q.type === 'multiple_choice') {
+                q.options.forEach(opt => {
+                    html += `<label><input type="checkbox" name="q${index}" value="${opt}"> ${opt}</label>`;
+                });
+            } else if (q.type === 'essay') {
+                html += `<textarea id="ans${index}" class="answer-box" placeholder="Раскажи со свои зборови..."></textarea>`;
             } else {
-                html += `<input type="text" id="ans${index}" placeholder="Напиши го зборот тука...">`;
+                html += `<input type="text" id="ans${index}" placeholder="Напиши го одговорот...">`;
             }
             
-            html += `<p id="feedback${index}" style="margin-top:10px; font-size:0.9em;"></p>`;
+            html += `<div id="fb${index}" class="feedback"></div>`;
             html += `</div>`;
             resultDiv.innerHTML += html;
         });
 
-        // Додај копче за проверка на крајот
-        if (questions.length > 0) {
-            resultDiv.innerHTML += `<button class="check-btn" onclick="checkAnswers()">Провери ги сите одговори</button>`;
+        if (currentQuestions.length > 0) {
+            resultDiv.innerHTML += `<button class="check-btn" onclick="checkAnswers()">ПРОВЕРИ ОДГОВОРИ</button>`;
         }
     }
 
     function checkAnswers() {
         let score = 0;
-        currentQuestions.forEach((q, index) => {
-            let userAns = "";
-            if (q.type === 'choice') {
-                const selected = document.querySelector(`input[name="q${index}"]:checked`);
-                userAns = selected ? selected.value : "";
-            } else {
-                userAns = document.getElementById(`ans${index}`).value.trim();
+        currentQuestions.forEach((q, i) => {
+            const fb = document.getElementById(`fb${i}`);
+            let isCorrect = false;
+            let statusMessage = "";
+
+            if (q.type === 'multiple_choice') {
+                const checked = Array.from(document.querySelectorAll(`input[name="q${i}"]:checked`)).map(el => el.value.toLowerCase().trim());
+                const correct = q.correct_answer.map(a => a.toLowerCase().trim());
+                isCorrect = correct.every(a => checked.includes(a)) && checked.length === correct.length;
+            } 
+            else if (q.type === 'choice') {
+                const sel = document.querySelector(`input[name="q${i}"]:checked`);
+                isCorrect = sel && sel.value.toLowerCase().trim() === q.correct_answer.toLowerCase().trim();
+            } 
+            else if (q.type === 'essay') {
+                const userVal = document.getElementById(`ans${i}`).value.toLowerCase().trim();
+                const keywords = q.keywords || [];
+                let matchCount = 0;
+                
+                keywords.forEach(word => { if (userVal.includes(word)) matchCount++; });
+                let percent = (matchCount / keywords.length) * 100;
+                
+                if (percent >= 60) {
+                    isCorrect = true;
+                    statusMessage = `<span class="partial">(Делумно точно - ${Math.round(percent)}% клучни поими)</span>`;
+                } else {
+                    statusMessage = `<span class="wrong">(Недоволно поими - само ${Math.round(percent)}%)</span>`;
+                }
+            } 
+            else {
+                const userVal = document.getElementById(`ans${i}`).value.trim().toLowerCase();
+                isCorrect = userVal === q.correct_answer.toLowerCase().trim();
             }
 
-            const feedback = document.getElementById(`feedback${index}`);
-            // Проверка (мали/големи букви се игнорираат)
-            if (userAns.toLowerCase() === q.correct_answer.toLowerCase()) {
+            if (isCorrect) {
                 score++;
-                feedback.innerHTML = `<span class="correct">✓ Точно!</span>`;
+                fb.innerHTML = `<span class="correct">✓ Точно!</span> ${statusMessage}`;
             } else {
-                feedback.innerHTML = `<span class="wrong">✗ Погрешно.</span> Точниот одговор е: <strong>${q.correct_answer}</strong>`;
+                let show = Array.isArray(q.correct_answer) ? q.correct_answer.join(", ") : q.correct_answer;
+                fb.innerHTML = `<span class="wrong">✗ Погрешно.</span> ${statusMessage}<br>Точно: <em>${show}</em>`;
             }
         });
 
-        const scoreArea = document.getElementById('scoreArea');
-        scoreArea.innerHTML = `<div class="result">Твојот резултат: ${score} од ${currentQuestions.length} точни одговори!</div>`;
+        document.getElementById('scoreArea').innerHTML = `<h3>Резултат: ${score} / ${currentQuestions.length}</h3>`;
     }
 </script>
 
