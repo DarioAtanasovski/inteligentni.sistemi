@@ -3,143 +3,873 @@
 <head>
     <meta charset="UTF-8">
     <title>SmartQuiz Pro - Генератор</title>
+
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 800px; margin: 40px auto; padding: 20px; background-color: #f0f2f5; }
-        .container { background: white; padding: 30px; border-radius: 15px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
-        h2 { color: #333; text-align: center; }
-        textarea#userInput { width: 100%; height: 150px; margin-bottom: 15px; padding: 12px; border: 1px solid #ddd; border-radius: 8px; resize: vertical; box-sizing: border-box; }
-        button.main-btn { background: #007bff; color: white; border: none; padding: 15px; border-radius: 8px; cursor: pointer; width: 100%; font-size: 16px; font-weight: bold; }
-        .question-block { margin-bottom: 25px; padding: 20px; background: #fff; border: 1px solid #eee; border-radius: 10px; border-left: 6px solid #007bff; }
-        input[type="text"], textarea.answer-box { width: 100%; padding: 10px; margin-top: 10px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
-        textarea.answer-box { height: 100px; resize: none; }
-        .check-btn { background: #28a745; color: white; border: none; padding: 15px; border-radius: 8px; cursor: pointer; width: 100%; font-size: 16px; margin-top: 20px; }
-        .feedback { margin-top: 12px; font-size: 0.95em; line-height: 1.4; }
-        .correct { color: #28a745; font-weight: bold; }
-        .wrong { color: #dc3545; font-weight: bold; }
-        .partial { color: #fd7e14; font-weight: bold; }
-        label { display: block; margin: 10px 0; cursor: pointer; padding: 5px; border-radius: 4px; transition: 0.2s; }
-        label:hover { background: #f8f9fa; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 850px;
+            margin: 40px auto;
+            padding: 20px;
+            background-color: #f0f2f5;
+        }
+
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+
+        h2 {
+            color: #333;
+            text-align: center;
+        }
+
+        textarea#userInput {
+            width: 100%;
+            height: 160px;
+            margin-bottom: 15px;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            resize: vertical;
+            box-sizing: border-box;
+            font-size: 15px;
+        }
+
+        button.main-btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            width: 100%;
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        button.main-btn:hover {
+            background: #0069d9;
+        }
+
+        .flashcard-btn {
+            background: #6f42c1;
+            color: white;
+            border: none;
+            padding: 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            width: 100%;
+            font-size: 16px;
+            font-weight: bold;
+            margin-top: 12px;
+        }
+
+        .flashcard-btn:hover {
+            background: #5a32a3;
+        }
+
+        .question-block {
+            margin-bottom: 25px;
+            padding: 20px;
+            background: #fff;
+            border: 1px solid #eee;
+            border-radius: 10px;
+            border-left: 6px solid #007bff;
+        }
+
+        input[type="text"],
+        textarea.answer-box {
+            width: 100%;
+            padding: 10px;
+            margin-top: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            box-sizing: border-box;
+            font-size: 15px;
+        }
+
+        textarea.answer-box {
+            height: 100px;
+            resize: none;
+        }
+
+        .check-btn {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            width: 100%;
+            font-size: 16px;
+            margin-top: 20px;
+            font-weight: bold;
+        }
+
+        .check-btn:hover {
+            background: #218838;
+        }
+
+        .feedback {
+            margin-top: 12px;
+            font-size: 0.95em;
+            line-height: 1.4;
+        }
+
+        .correct {
+            color: #28a745;
+            font-weight: bold;
+        }
+
+        .wrong {
+            color: #dc3545;
+            font-weight: bold;
+        }
+
+        .partial {
+            color: #fd7e14;
+            font-weight: bold;
+        }
+
+        label {
+            display: block;
+            margin: 10px 0;
+            cursor: pointer;
+            padding: 5px;
+            border-radius: 4px;
+            transition: 0.2s;
+        }
+
+        label:hover {
+            background: #f8f9fa;
+        }
+
+        .learning-plan {
+            text-align: left;
+            border-left-color: #28a745;
+            background: #f8fff9;
+        }
+
+        .practice-title {
+            text-align: center;
+            color: #333;
+            margin-top: 35px;
+        }
+
+        .loading-box {
+            text-align: center;
+            color: #555;
+        }
+
+        .flashcards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 22px;
+            margin-top: 20px;
+            align-items: start;
+        }
+
+        .flashcard {
+            background: transparent;
+            height: 280px;
+            perspective: 1000px;
+            cursor: pointer;
+        }
+
+        .flashcard-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            transition: transform 0.6s;
+            transform-style: preserve-3d;
+        }
+
+        .flashcard.flipped .flashcard-inner {
+            transform: rotateY(180deg);
+        }
+
+        .flashcard-front,
+        .flashcard-back {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            border-radius: 12px;
+            padding: 18px;
+            box-sizing: border-box;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            text-align: center;
+            line-height: 1.45;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            white-space: pre-line;
+            overflow-y: auto;
+            overflow-x: hidden;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+        }
+
+        .flashcard-front {
+            background: #eef5ff;
+            border: 2px solid #007bff;
+            color: #003d80;
+            font-weight: bold;
+            font-size: 1rem;
+        }
+
+        .flashcard-back {
+            background: #f2fff4;
+            border: 2px solid #28a745;
+            color: #155724;
+            transform: rotateY(180deg);
+            font-size: 0.95rem;
+        }
+
+        @media (max-width: 600px) {
+            .flashcard {
+                height: 320px;
+            }
+        }
+
+        .flashcard-hint {
+            text-align: center;
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .section-title {
+            text-align: center;
+            color: #333;
+        }
     </style>
 </head>
+
 <body>
 
 <div class="container">
     <h2>SmartQuiz Pro</h2>
+
     <textarea id="userInput" placeholder="Внеси го текстот за учење тука..."></textarea>
+
     <button class="main-btn" onclick="generateQuiz()">ГЕНЕРИРАЈ ТЕСТ</button>
 
+    <button class="flashcard-btn" onclick="generateFlashcards()">ГЕНЕРИРАЈ КАРТИЧКИ ЗА УЧЕЊЕ</button>
+
     <div id="quizResult" style="margin-top: 30px;"></div>
+
     <div id="scoreArea" style="text-align: center; margin-top: 20px;"></div>
+
+    <div id="practiceArea" style="margin-top: 25px;"></div>
+
+    <div id="flashcardsArea" style="margin-top: 25px;"></div>
 </div>
 
 <script>
     let currentQuestions = [];
+    let practiceQuestions = [];
+    let currentFlashcards = [];
+    let originalText = "";
+
+    const CATEGORY_LABELS = {
+        likovi: "Ликови",
+        nastani: "Настани",
+        pricini_posledici: "Причини и последици",
+        zaklucoci: "Заклучоци"
+    };
+
+    function escapeHtml(value) {
+        return String(value)
+            .replaceAll("&", "&amp;")
+            .replaceAll("<", "&lt;")
+            .replaceAll(">", "&gt;")
+            .replaceAll('"', "&quot;")
+            .replaceAll("'", "&#039;");
+    }
 
     async function generateQuiz() {
-        const text = document.getElementById('userInput').value;
+        const text = document.getElementById('userInput').value.trim();
         const resultDiv = document.getElementById('quizResult');
-        
+        const scoreArea = document.getElementById('scoreArea');
+        const practiceArea = document.getElementById('practiceArea');
+
+        scoreArea.innerHTML = "";
+        practiceArea.innerHTML = "";
+        resultDiv.innerHTML = "";
+
         if (!text || text.length < 20) {
             alert("Внеси подолг текст за да генерираме прашања!");
             return;
         }
 
-        resultDiv.innerHTML = "<p style='text-align:center;'>Се подготвуваат прашањата...</p>";
+        originalText = text;
+
+        resultDiv.innerHTML = `
+            <div class="question-block loading-box">
+                <p>Се подготвуваат прашањата...</p>
+            </div>
+        `;
 
         try {
             const response = await fetch('http://127.0.0.1:5000/generate-quiz', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ text: text })
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    text: text
+                })
             });
+
             const data = await response.json();
-            currentQuestions = data.quiz;
+
+            if (!response.ok) {
+                resultDiv.innerHTML = `
+                    <p class="wrong">
+                        Грешка: ${escapeHtml(data.error || "Непозната грешка.")}
+                    </p>
+                `;
+                return;
+            }
+
+            currentQuestions = data.quiz || [];
+
+            if (currentQuestions.length === 0) {
+                resultDiv.innerHTML = `
+                    <p class="wrong">
+                        Не се генерираа прашања. Внеси подолг текст со повеќе реченици.
+                    </p>
+                `;
+                return;
+            }
+
             displayQuiz();
+
         } catch (error) {
-            resultDiv.innerHTML = "<p class='wrong'>Грешка: Провери дали Python серверот е вклучен!</p>";
+            resultDiv.innerHTML = `
+                <p class="wrong">
+                    Грешка: Провери дали Python серверот е вклучен!
+                </p>
+            `;
+            console.error(error);
         }
+    }
+
+    function renderQuestion(q, index, prefix) {
+        let html = `<div class="question-block">`;
+
+        html += `<p><strong>${index + 1}. ${escapeHtml(q.question)}</strong></p>`;
+
+        if (q.type === 'choice') {
+            const options = q.options || [];
+
+            options.forEach(opt => {
+                html += `
+                    <label>
+                        <input type="radio" name="${prefix}_q${index}" value="${escapeHtml(opt)}">
+                        ${escapeHtml(opt)}
+                    </label>
+                `;
+            });
+
+        } else if (q.type === 'multiple_choice') {
+            const options = q.options || [];
+
+            options.forEach(opt => {
+                html += `
+                    <label>
+                        <input type="checkbox" name="${prefix}_q${index}" value="${escapeHtml(opt)}">
+                        ${escapeHtml(opt)}
+                    </label>
+                `;
+            });
+
+        } else if (q.type === 'essay') {
+            html += `
+                <textarea
+                    id="${prefix}_ans${index}"
+                    class="answer-box"
+                    placeholder="Раскажи со свои зборови..."></textarea>
+            `;
+
+        } else {
+            html += `
+                <input
+                    type="text"
+                    id="${prefix}_ans${index}"
+                    placeholder="Напиши го одговорот...">
+            `;
+        }
+
+        html += `<div id="${prefix}_fb${index}" class="feedback"></div>`;
+        html += `</div>`;
+
+        return html;
     }
 
     function displayQuiz() {
         const resultDiv = document.getElementById('quizResult');
         resultDiv.innerHTML = "";
-        
+
         currentQuestions.forEach((q, index) => {
-            let html = `<div class="question-block">`;
-            html += `<p><strong>${index + 1}. ${q.question}</strong></p>`;
-            
-            if (q.type === 'choice') {
-                q.options.forEach(opt => {
-                    html += `<label><input type="radio" name="q${index}" value="${opt}"> ${opt}</label>`;
-                });
-            } else if (q.type === 'multiple_choice') {
-                q.options.forEach(opt => {
-                    html += `<label><input type="checkbox" name="q${index}" value="${opt}"> ${opt}</label>`;
-                });
-            } else if (q.type === 'essay') {
-                html += `<textarea id="ans${index}" class="answer-box" placeholder="Раскажи со свои зборови..."></textarea>`;
-            } else {
-                html += `<input type="text" id="ans${index}" placeholder="Напиши го одговорот...">`;
-            }
-            
-            html += `<div id="fb${index}" class="feedback"></div>`;
-            html += `</div>`;
-            resultDiv.innerHTML += html;
+            resultDiv.innerHTML += renderQuestion(q, index, "main");
         });
 
-        if (currentQuestions.length > 0) {
-            resultDiv.innerHTML += `<button class="check-btn" onclick="checkAnswers()">ПРОВЕРИ ОДГОВОРИ</button>`;
-        }
+        resultDiv.innerHTML += `
+            <button class="check-btn" onclick="checkAnswers()">
+                ПРОВЕРИ ОДГОВОРИ
+            </button>
+        `;
     }
 
-    function checkAnswers() {
+    function evaluateQuestions(questions, prefix) {
         let score = 0;
-        currentQuestions.forEach((q, i) => {
-            const fb = document.getElementById(`fb${i}`);
+        let categoryStats = {};
+        let questionResults = [];
+
+        questions.forEach((q, i) => {
+            const fb = document.getElementById(`${prefix}_fb${i}`);
+            const category = q.category || "nastani";
+
+            if (!categoryStats[category]) {
+                categoryStats[category] = {
+                    correct: 0,
+                    total: 0
+                };
+            }
+
+            categoryStats[category].total++;
+
             let isCorrect = false;
             let statusMessage = "";
 
             if (q.type === 'multiple_choice') {
-                const checked = Array.from(document.querySelectorAll(`input[name="q${i}"]:checked`)).map(el => el.value.toLowerCase().trim());
+                const checked = Array.from(
+                    document.querySelectorAll(`input[name="${prefix}_q${i}"]:checked`)
+                ).map(el => el.value.toLowerCase().trim());
+
                 const correct = q.correct_answer.map(a => a.toLowerCase().trim());
-                isCorrect = correct.every(a => checked.includes(a)) && checked.length === correct.length;
-            } 
+
+                isCorrect =
+                    correct.every(a => checked.includes(a)) &&
+                    checked.length === correct.length;
+            }
+
             else if (q.type === 'choice') {
-                const sel = document.querySelector(`input[name="q${i}"]:checked`);
-                isCorrect = sel && sel.value.toLowerCase().trim() === q.correct_answer.toLowerCase().trim();
-            } 
+                const selected = document.querySelector(`input[name="${prefix}_q${i}"]:checked`);
+
+                isCorrect =
+                    selected &&
+                    selected.value.toLowerCase().trim() === q.correct_answer.toLowerCase().trim();
+            }
+
             else if (q.type === 'essay') {
-                const userVal = document.getElementById(`ans${i}`).value.toLowerCase().trim();
+                const userVal = document.getElementById(`${prefix}_ans${i}`).value.toLowerCase().trim();
                 const keywords = q.keywords || [];
                 let matchCount = 0;
-                
-                keywords.forEach(word => { if (userVal.includes(word)) matchCount++; });
-                let percent = (matchCount / keywords.length) * 100;
-                
+
+                keywords.forEach(word => {
+                    if (userVal.includes(word.toLowerCase())) {
+                        matchCount++;
+                    }
+                });
+
+                let percent = keywords.length > 0
+                    ? (matchCount / keywords.length) * 100
+                    : 0;
+
                 if (percent >= 60) {
                     isCorrect = true;
-                    statusMessage = `<span class="partial">(Делумно точно - ${Math.round(percent)}% клучни поими)</span>`;
+                    statusMessage = `
+                        <span class="partial">
+                            Делумно точно - ${Math.round(percent)}% клучни поими
+                        </span>
+                    `;
                 } else {
-                    statusMessage = `<span class="wrong">(Недоволно поими - само ${Math.round(percent)}%)</span>`;
+                    statusMessage = `
+                        <span class="wrong">
+                            Недоволно поими - само ${Math.round(percent)}%
+                        </span>
+                    `;
                 }
-            } 
+            }
+
             else {
-                const userVal = document.getElementById(`ans${i}`).value.trim().toLowerCase();
-                isCorrect = userVal === q.correct_answer.toLowerCase().trim();
+                const userVal = document.getElementById(`${prefix}_ans${i}`).value.trim().toLowerCase();
+
+                isCorrect =
+                    userVal === q.correct_answer.toLowerCase().trim();
             }
 
             if (isCorrect) {
                 score++;
-                fb.innerHTML = `<span class="correct">✓ Точно!</span> ${statusMessage}`;
+                categoryStats[category].correct++;
+
+                fb.innerHTML = `
+                    <span class="correct">✓ Точно!</span>
+                    ${statusMessage}
+                `;
             } else {
-                let show = Array.isArray(q.correct_answer) ? q.correct_answer.join(", ") : q.correct_answer;
-                fb.innerHTML = `<span class="wrong">✗ Погрешно.</span> ${statusMessage}<br>Точно: <em>${show}</em>`;
+                let show = Array.isArray(q.correct_answer)
+                    ? q.correct_answer.join(", ")
+                    : q.correct_answer;
+
+                fb.innerHTML = `
+                    <span class="wrong">✗ Погрешно.</span>
+                    ${statusMessage}
+                    <br>
+                    Точно: <em>${escapeHtml(show)}</em>
+                `;
+            }
+
+            questionResults.push({
+                question: q,
+                correct: isCorrect
+            });
+        });
+
+        return {
+            score,
+            total: questions.length,
+            categoryStats,
+            questionResults
+        };
+    }
+
+    function checkAnswers() {
+        const result = evaluateQuestions(currentQuestions, "main");
+
+        showLearningPlan(result);
+
+        const weakCategories = getWeakCategories(result.categoryStats);
+
+        if (weakCategories.length > 0) {
+            generatePracticeQuiz(weakCategories);
+        } else {
+            document.getElementById('practiceArea').innerHTML = "";
+        }
+    }
+
+    function getWeakCategories(categoryStats) {
+        let weak = [];
+
+        Object.keys(categoryStats).forEach(category => {
+            const item = categoryStats[category];
+            const percent = Math.round((item.correct / item.total) * 100);
+
+            if (percent < 70) {
+                weak.push(category);
             }
         });
 
-        document.getElementById('scoreArea').innerHTML = `<h3>Резултат: ${score} / ${currentQuestions.length}</h3>`;
+        return weak;
+    }
+
+    function showLearningPlan(result) {
+        const scoreArea = document.getElementById('scoreArea');
+
+        let rows = [];
+        let bestCategory = null;
+        let weakestCategories = [];
+
+        Object.keys(result.categoryStats).forEach(category => {
+            const item = result.categoryStats[category];
+            const percent = Math.round((item.correct / item.total) * 100);
+
+            rows.push({
+                category: category,
+                label: CATEGORY_LABELS[category] || category,
+                percent: percent
+            });
+        });
+
+        rows.sort((a, b) => b.percent - a.percent);
+
+        if (rows.length > 0) {
+            bestCategory = rows[0];
+            weakestCategories = rows.filter(row => row.percent < 70);
+        }
+
+        let html = `<h3>Резултат: ${result.score} / ${result.total}</h3>`;
+
+        html += `
+            <div class="question-block learning-plan">
+                <h3>Персонализиран план за учење</h3>
+                <p><strong>Резултат по области:</strong></p>
+        `;
+
+        rows.forEach(row => {
+            html += `
+                <p>
+                    ${escapeHtml(row.label)}:
+                    <strong>${row.percent}%</strong>
+                </p>
+            `;
+        });
+
+        if (weakestCategories.length === 0) {
+            html += `
+                <p class="correct">
+                    Одлично! Немаш слаба област под 70%.
+                    Продолжи со повторување за да го задржиш знаењето.
+                </p>
+            `;
+        } else {
+            const weakLabels = weakestCategories
+                .map(w => w.label)
+                .join(", ");
+
+            html += `
+                <p>
+                    <strong>Препорака:</strong><br>
+                    Најдобро ги знаеш <strong>${escapeHtml(bestCategory.label)}</strong>,
+                    но треба повеќе да вежбаш
+                    <strong>${escapeHtml(weakLabels)}</strong>.
+                </p>
+            `;
+
+            html += `
+                <p>
+                    <em>${escapeHtml(makeSmartRecommendation(weakestCategories, result.questionResults))}</em>
+                </p>
+            `;
+        }
+
+        html += `</div>`;
+
+        scoreArea.innerHTML = html;
+    }
+
+    function makeSmartRecommendation(weakestCategories, questionResults) {
+        const weakCategoryNames = weakestCategories.map(w => w.category);
+
+        const weakWrongQuestion = questionResults.find(item => {
+            return !item.correct && weakCategoryNames.includes(item.question.category);
+        });
+
+        if (!weakWrongQuestion) {
+            return "Повтори ги деловите од текстот што припаѓаат на слабите области.";
+        }
+
+        const q = weakWrongQuestion.question;
+        const sentence = q.source_sentence || q.question;
+
+        if (q.category === "pricini_posledici") {
+            return `Повтори го делот каде се објаснува зошто се случува ова: „${sentence}“.`;
+        }
+
+        if (q.category === "likovi") {
+            return `Повтори го делот каде се опишуваат ликовите и нивната улога: „${sentence}“.`;
+        }
+
+        if (q.category === "nastani") {
+            return `Повтори го редоследот на настаните во делот: „${sentence}“.`;
+        }
+
+        if (q.category === "zaklucoci") {
+            return `Повтори ја пораката или заклучокот од делот: „${sentence}“.`;
+        }
+
+        return `Повтори го овој дел: „${sentence}“.`;
+    }
+
+    async function generatePracticeQuiz(weakCategories) {
+        const practiceArea = document.getElementById('practiceArea');
+
+        practiceArea.innerHTML = `
+            <div class="question-block loading-box">
+                <p><strong>Се подготвуваат нови прашања само од слабите области...</strong></p>
+            </div>
+        `;
+
+        try {
+            const response = await fetch('http://127.0.0.1:5000/generate-quiz', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    text: originalText,
+                    weak_categories: weakCategories
+                })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                practiceArea.innerHTML = `
+                    <p class="wrong">
+                        Грешка: ${escapeHtml(data.error || "Не може да се креира дополнителна вежба.")}
+                    </p>
+                `;
+                return;
+            }
+
+            practiceQuestions = data.quiz || [];
+
+            if (practiceQuestions.length === 0) {
+                practiceArea.innerHTML = `
+                    <div class="question-block">
+                        <p class="wrong">
+                            Не се најдоа доволно прашања за слабите области.
+                        </p>
+                    </div>
+                `;
+                return;
+            }
+
+            displayPracticeQuiz();
+
+        } catch (error) {
+            practiceArea.innerHTML = `
+                <p class="wrong">
+                    Грешка при креирање дополнителни прашања.
+                </p>
+            `;
+            console.error(error);
+        }
+    }
+
+    function displayPracticeQuiz() {
+        const practiceArea = document.getElementById('practiceArea');
+
+        practiceArea.innerHTML = `
+            <h3 class="practice-title">
+                Дополнителна вежба за слабите области
+            </h3>
+        `;
+
+        practiceQuestions.forEach((q, index) => {
+            practiceArea.innerHTML += renderQuestion(q, index, "practice");
+        });
+
+        practiceArea.innerHTML += `
+            <button class="check-btn" onclick="checkPracticeAnswers()">
+                ПРОВЕРИ ДОПОЛНИТЕЛНА ВЕЖБА
+            </button>
+
+            <div id="practiceScore" style="text-align:center; margin-top:20px;"></div>
+        `;
+    }
+
+    function checkPracticeAnswers() {
+        const result = evaluateQuestions(practiceQuestions, "practice");
+
+        document.getElementById('practiceScore').innerHTML = `
+            <h3>
+                Резултат од дополнителна вежба:
+                ${result.score} / ${result.total}
+            </h3>
+        `;
+    }
+
+    async function generateFlashcards() {
+        const text = document.getElementById('userInput').value.trim();
+        const flashcardsArea = document.getElementById('flashcardsArea');
+
+        if (!text || text.length < 20) {
+            alert("Внеси подолг текст за да генерираме картички!");
+            return;
+        }
+
+        flashcardsArea.innerHTML = `
+            <div class="question-block loading-box">
+                <p>Се подготвуваат картичките за учење...</p>
+            </div>
+        `;
+
+        try {
+            const response = await fetch('http://127.0.0.1:5000/generate-flashcards', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    text: text
+                })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                flashcardsArea.innerHTML = `
+                    <p class="wrong">
+                        Грешка: ${escapeHtml(data.error || "Не може да се креираат картички.")}
+                    </p>
+                `;
+                return;
+            }
+
+            currentFlashcards = data.flashcards || [];
+
+            if (currentFlashcards.length === 0) {
+                flashcardsArea.innerHTML = `
+                    <div class="question-block">
+                        <p class="wrong">
+                            Не се генерираа картички. Внеси подолг текст со повеќе реченици.
+                        </p>
+                    </div>
+                `;
+                return;
+            }
+
+            displayFlashcards();
+
+        } catch (error) {
+            flashcardsArea.innerHTML = `
+                <p class="wrong">
+                    Грешка: Провери дали Python серверот е вклучен!
+                </p>
+            `;
+            console.error(error);
+        }
+    }
+
+    function displayFlashcards() {
+        const flashcardsArea = document.getElementById('flashcardsArea');
+
+        let html = `
+            <div class="question-block" style="border-left-color:#6f42c1;">
+                <h3 class="section-title">Картички за учење</h3>
+                <p class="flashcard-hint">Кликни на картичка за да го видиш одговорот.</p>
+                <div class="flashcards-grid">
+        `;
+
+        currentFlashcards.forEach((card, index) => {
+            html += `
+                <div class="flashcard" onclick="flipCard(${index})" id="flashcard_${index}">
+                    <div class="flashcard-inner">
+                        <div class="flashcard-front">
+                            ${escapeHtml(card.front)}
+                        </div>
+                        <div class="flashcard-back">
+                            ${escapeHtml(card.back)}
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+
+        html += `
+                </div>
+            </div>
+        `;
+
+        flashcardsArea.innerHTML = html;
+    }
+
+    function flipCard(index) {
+        const card = document.getElementById(`flashcard_${index}`);
+
+        if (card) {
+            card.classList.toggle("flipped");
+        }
     }
 </script>
 
 </body>
 </html>
+
