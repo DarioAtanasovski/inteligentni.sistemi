@@ -133,6 +133,16 @@
             font-weight: bold;
         }
 
+        .question-type {
+            display: inline-block;
+            font-size: 0.82em;
+            color: #555;
+            background: #f1f3f5;
+            padding: 4px 8px;
+            border-radius: 999px;
+            margin-bottom: 8px;
+        }
+
         label {
             display: block;
             margin: 10px 0;
@@ -245,6 +255,48 @@
             text-align: center;
             color: #333;
         }
+
+        .score-summary {
+            border-left-color: #17a2b8;
+            background: #f8fcff;
+        }
+
+        .score-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 12px;
+            margin: 18px 0;
+        }
+
+        .score-card {
+            background: white;
+            border: 1px solid #e5eaf0;
+            border-radius: 10px;
+            padding: 14px;
+            text-align: center;
+        }
+
+        .score-card span {
+            display: block;
+            color: #666;
+            font-size: 0.9em;
+            margin-bottom: 6px;
+        }
+
+        .score-card strong {
+            font-size: 1.25em;
+            color: #222;
+        }
+
+        .final-message {
+            margin-top: 15px;
+            padding: 14px;
+            border-radius: 10px;
+            background: #fff7e6;
+            border: 1px solid #ffe0a3;
+            color: #533f03;
+            line-height: 1.5;
+        }
     </style>
 </head>
 
@@ -281,8 +333,20 @@
         zaklucoci: "Заклучоци"
     };
 
+    const QUESTION_TYPE_LABELS = {
+        choice: "Избор на еден одговор",
+        multiple_choice: "Избор на два точни поими",
+        input: "Краток пишан одговор",
+        essay: "Објаснување со свои зборови"
+    };
+
+    // Делумно точните одговори се бројат како 1 поен, за резултатот да изгледа вака:
+    // Точни 6 + делумно точни 2 = Освоени поени 8/10.
+    // Ако професорот бара половина поен, смени ја вредноста во 0.5.
+    const PARTIAL_POINTS = 1;
+
     function escapeHtml(value) {
-        return String(value)
+        return String(value ?? "")
             .replaceAll("&", "&amp;")
             .replaceAll("<", "&lt;")
             .replaceAll(">", "&gt;")
@@ -290,14 +354,45 @@
             .replaceAll("'", "&#039;");
     }
 
+    function normalizeAnswer(value) {
+        return String(value ?? "")
+            .toLowerCase()
+            .replace(/[.,!?;:"'“”„()\[\]{}]/g, " ")
+            .replace(/\s+/g, " ")
+            .trim();
+    }
+
+    function answerContains(text, expected) {
+        const cleanText = normalizeAnswer(text);
+        const cleanExpected = normalizeAnswer(expected);
+
+        if (!cleanText || !cleanExpected) {
+            return false;
+        }
+
+        if (cleanText === cleanExpected) {
+            return true;
+        }
+
+        // Дозволува точниот поим да биде во цела реченица, но празен одговор никогаш не поминува.
+        const words = cleanText.split(" ");
+        if (cleanExpected.split(" ").length === 1) {
+            return words.includes(cleanExpected);
+        }
+
+        return cleanText.includes(cleanExpected);
+    }
+
     async function generateQuiz() {
         const text = document.getElementById('userInput').value.trim();
         const resultDiv = document.getElementById('quizResult');
         const scoreArea = document.getElementById('scoreArea');
         const practiceArea = document.getElementById('practiceArea');
+        const flashcardsArea = document.getElementById('flashcardsArea');
 
         scoreArea.innerHTML = "";
         practiceArea.innerHTML = "";
+        flashcardsArea.innerHTML = "";
         resultDiv.innerHTML = "";
 
         if (!text || text.length < 20) {
@@ -340,7 +435,7 @@
             if (currentQuestions.length === 0) {
                 resultDiv.innerHTML = `
                     <p class="wrong">
-                        Не се генерираа прашања. Внеси подолг текст со повеќе реченици.
+                        Не се генерираа прашања. Внеси подолг текст со повеќе јасни реченици.
                     </p>
                 `;
                 return;
@@ -360,9 +455,13 @@
 
     function renderQuestion(q, index, prefix) {
         let html = `<div class="question-block">`;
+        const typeLabel = QUESTION_TYPE_LABELS[q.type] || "Прашање";
+        const categoryLabel = CATEGORY_LABELS[q.category] || q.category || "Општо";
 
+        html += `<span class="question-type">${escapeHtml(typeLabel)} · ${escapeHtml(categoryLabel)}</span>`;
         html += `<p><strong>${index + 1}. ${escapeHtml(q.question)}</strong></p>`;
 
+        // ВАЖНО: точниот одговор НЕ се прикажува овде. Се прикажува само по проверка.
         if (q.type === 'choice') {
             const options = q.options || [];
 
@@ -426,7 +525,11 @@
     }
 
     function evaluateQuestions(questions, prefix) {
-        let score = 0;
+        let points = 0;
+        let maxPoints = questions.length;
+        let correctCount = 0;
+        let partialCount = 0;
+        let wrongCount = 0;
         let categoryStats = {};
         let questionResults = [];
 
@@ -437,103 +540,181 @@
             if (!categoryStats[category]) {
                 categoryStats[category] = {
                     correct: 0,
-                    total: 0
+                    partial: 0,
+                    wrong: 0,
+                    total: 0,
+                    points: 0
                 };
             }
 
             categoryStats[category].total++;
 
-            let isCorrect = false;
+            let resultStatus = "wrong";
+            let earnedPoints = 0;
             let statusMessage = "";
+            let emptyAnswer = false;
 
             if (q.type === 'multiple_choice') {
                 const checked = Array.from(
                     document.querySelectorAll(`input[name="${prefix}_q${i}"]:checked`)
-                ).map(el => el.value.toLowerCase().trim());
+                ).map(el => normalizeAnswer(el.value));
 
-                const correct = q.correct_answer.map(a => a.toLowerCase().trim());
+                const correct = (q.correct_answer || []).map(a => normalizeAnswer(a));
 
-                isCorrect =
+                emptyAnswer = checked.length === 0;
+
+                const isCorrect =
+                    !emptyAnswer &&
+                    correct.length > 0 &&
                     correct.every(a => checked.includes(a)) &&
                     checked.length === correct.length;
+
+                if (isCorrect) {
+                    resultStatus = "correct";
+                    earnedPoints = 1;
+                }
             }
 
             else if (q.type === 'choice') {
                 const selected = document.querySelector(`input[name="${prefix}_q${i}"]:checked`);
 
-                isCorrect =
-                    selected &&
-                    selected.value.toLowerCase().trim() === q.correct_answer.toLowerCase().trim();
+                emptyAnswer = !selected;
+
+                if (!emptyAnswer && answerContains(selected.value, q.correct_answer)) {
+                    resultStatus = "correct";
+                    earnedPoints = 1;
+                }
             }
 
             else if (q.type === 'essay') {
-                const userVal = document.getElementById(`${prefix}_ans${i}`).value.toLowerCase().trim();
+                const userVal = document.getElementById(`${prefix}_ans${i}`).value.trim();
+                const normalizedUser = normalizeAnswer(userVal);
                 const keywords = q.keywords || [];
                 let matchCount = 0;
 
-                keywords.forEach(word => {
-                    if (userVal.includes(word.toLowerCase())) {
-                        matchCount++;
+                emptyAnswer = normalizedUser.length === 0;
+
+                if (!emptyAnswer && keywords.length > 0) {
+                    keywords.forEach(word => {
+                        if (answerContains(normalizedUser, word)) {
+                            matchCount++;
+                        }
+                    });
+
+                    const percent = (matchCount / keywords.length) * 100;
+                    const correctNeeded = Math.max(1, Math.ceil(keywords.length * 0.65));
+                    const partialNeeded = Math.max(1, Math.ceil(keywords.length * 0.35));
+
+                    if (matchCount >= correctNeeded) {
+                        resultStatus = "correct";
+                        earnedPoints = 1;
+                        statusMessage = `
+                            <span class="correct">
+                                Погодени се ${matchCount} од ${keywords.length} клучни поими.
+                            </span>
+                        `;
+                    } else if (matchCount >= partialNeeded) {
+                        resultStatus = "partial";
+                        earnedPoints = PARTIAL_POINTS;
+                        statusMessage = `
+                            <span class="partial">
+                                Делумно точно - погодени се ${matchCount} од ${keywords.length} клучни поими.
+                            </span>
+                        `;
+                    } else {
+                        statusMessage = `
+                            <span class="wrong">
+                                Недоволно клучни поими - ${Math.round(percent)}%.
+                            </span>
+                        `;
                     }
-                });
-
-                let percent = keywords.length > 0
-                    ? (matchCount / keywords.length) * 100
-                    : 0;
-
-                if (percent >= 60) {
-                    isCorrect = true;
-                    statusMessage = `
-                        <span class="partial">
-                            Делумно точно - ${Math.round(percent)}% клучни поими
-                        </span>
-                    `;
-                } else {
-                    statusMessage = `
-                        <span class="wrong">
-                            Недоволно поими - само ${Math.round(percent)}%
-                        </span>
-                    `;
                 }
             }
 
             else {
-                const userVal = document.getElementById(`${prefix}_ans${i}`).value.trim().toLowerCase();
+                const userVal = document.getElementById(`${prefix}_ans${i}`).value.trim();
+                emptyAnswer = normalizeAnswer(userVal).length === 0;
 
-                isCorrect =
-                    userVal === q.correct_answer.toLowerCase().trim();
+                if (!emptyAnswer && answerContains(userVal, q.correct_answer)) {
+                    resultStatus = "correct";
+                    earnedPoints = 1;
+                }
             }
 
-            if (isCorrect) {
-                score++;
+            if (emptyAnswer) {
+                resultStatus = "wrong";
+                earnedPoints = 0;
+                statusMessage = `<span class="wrong">Нема внесен одговор.</span>`;
+            }
+
+            points += earnedPoints;
+            categoryStats[category].points += earnedPoints;
+
+            if (resultStatus === "correct") {
+                correctCount++;
                 categoryStats[category].correct++;
 
                 fb.innerHTML = `
                     <span class="correct">✓ Точно!</span>
                     ${statusMessage}
                 `;
-            } else {
+            } else if (resultStatus === "partial") {
+                partialCount++;
+                categoryStats[category].partial++;
+
                 let show = Array.isArray(q.correct_answer)
                     ? q.correct_answer.join(", ")
                     : q.correct_answer;
+
+                let explanation = q.explanation
+                    ? `<br><small>${escapeHtml(q.explanation)}</small>`
+                    : "";
+
+                fb.innerHTML = `
+                    <span class="partial">≈ Делумно точно.</span>
+                    ${statusMessage}
+                    <br>
+                    Целосен одговор: <em>${escapeHtml(show)}</em>
+                    ${explanation}
+                `;
+            } else {
+                wrongCount++;
+                categoryStats[category].wrong++;
+
+                let show = Array.isArray(q.correct_answer)
+                    ? q.correct_answer.join(", ")
+                    : q.correct_answer;
+
+                let explanation = q.explanation
+                    ? `<br><small>${escapeHtml(q.explanation)}</small>`
+                    : "";
 
                 fb.innerHTML = `
                     <span class="wrong">✗ Погрешно.</span>
                     ${statusMessage}
                     <br>
                     Точно: <em>${escapeHtml(show)}</em>
+                    ${explanation}
                 `;
             }
 
             questionResults.push({
                 question: q,
-                correct: isCorrect
+                status: resultStatus,
+                correct: resultStatus === "correct",
+                partial: resultStatus === "partial",
+                points: earnedPoints
             });
         });
 
         return {
-            score,
+            points,
+            maxPoints,
+            score: points,
             total: questions.length,
+            correctCount,
+            partialCount,
+            wrongCount,
             categoryStats,
             questionResults
         };
@@ -558,7 +739,7 @@
 
         Object.keys(categoryStats).forEach(category => {
             const item = categoryStats[category];
-            const percent = Math.round((item.correct / item.total) * 100);
+            const percent = Math.round((item.points / item.total) * 100);
 
             if (percent < 70) {
                 weak.push(category);
@@ -568,16 +749,62 @@
         return weak;
     }
 
-    function showLearningPlan(result) {
-        const scoreArea = document.getElementById('scoreArea');
+    function formatPoints(value) {
+        if (Number.isInteger(value)) {
+            return String(value);
+        }
+        return value.toFixed(1);
+    }
+
+    function getGrade(points, maxPoints) {
+        const percent = maxPoints > 0 ? (points / maxPoints) * 100 : 0;
+
+        if (percent >= 90) return 5;
+        if (percent >= 75) return 4;
+        if (percent >= 60) return 3;
+        if (percent >= 50) return 2;
+        return 1;
+    }
+
+    function makeFinalMessage(grade, weakestCategories, questionResults) {
+        if (weakestCategories.length === 0 && grade >= 4) {
+            return "Одлично! Спремен/а си за проверка.";
+        }
+
+        const weakLabels = weakestCategories
+            .map(w => w.label)
+            .join(", ");
+
+        if (weakestCategories.length > 0) {
+            const recommendation = makeSmartRecommendation(weakestCategories, questionResults);
+
+            if (grade >= 4) {
+                return `Одлично! Имаш добар резултат, но треба да повториш делот за ${weakLabels}. ${recommendation}`;
+            }
+
+            if (grade === 3) {
+                return `Добро е, но за посигурна проверка треба да повториш делот за ${weakLabels}. ${recommendation}`;
+            }
+
+            return `Треба да повториш делот за ${weakLabels}. ${recommendation}`;
+        }
+
+        if (grade === 3) {
+            return "Добро е, но повтори уште еднаш за да бидеш посигурен/а.";
+        }
+
+        return "Треба уште повторување пред проверка. Почни од прашањата што беа неточни.";
+    }
+
+    function buildScoreSummary(result, title, includeRecommendation) {
+        const grade = getGrade(result.points, result.maxPoints);
 
         let rows = [];
-        let bestCategory = null;
         let weakestCategories = [];
 
         Object.keys(result.categoryStats).forEach(category => {
             const item = result.categoryStats[category];
-            const percent = Math.round((item.correct / item.total) * 100);
+            const percent = Math.round((item.points / item.total) * 100);
 
             rows.push({
                 category: category,
@@ -587,60 +814,70 @@
         });
 
         rows.sort((a, b) => b.percent - a.percent);
+        weakestCategories = rows.filter(row => row.percent < 70);
 
-        if (rows.length > 0) {
-            bestCategory = rows[0];
-            weakestCategories = rows.filter(row => row.percent < 70);
-        }
+        let html = `
+            <div class="question-block score-summary">
+                <h3>${escapeHtml(title)}</h3>
 
-        let html = `<h3>Резултат: ${result.score} / ${result.total}</h3>`;
-
-        html += `
-            <div class="question-block learning-plan">
-                <h3>Персонализиран план за учење</h3>
-                <p><strong>Резултат по области:</strong></p>
+                <div class="score-grid">
+                    <div class="score-card">
+                        <span>Освоени поени</span>
+                        <strong>${formatPoints(result.points)} / ${result.maxPoints}</strong>
+                    </div>
+                    <div class="score-card">
+                        <span>Оценка</span>
+                        <strong>${grade}</strong>
+                    </div>
+                    <div class="score-card">
+                        <span>Точни</span>
+                        <strong>${result.correctCount}</strong>
+                    </div>
+                    <div class="score-card">
+                        <span>Делумно точни</span>
+                        <strong>${result.partialCount}</strong>
+                    </div>
+                    <div class="score-card">
+                        <span>Неточни</span>
+                        <strong>${result.wrongCount}</strong>
+                    </div>
+                </div>
         `;
 
-        rows.forEach(row => {
+        if (includeRecommendation) {
             html += `
-                <p>
-                    ${escapeHtml(row.label)}:
-                    <strong>${row.percent}%</strong>
-                </p>
-            `;
-        });
-
-        if (weakestCategories.length === 0) {
-            html += `
-                <p class="correct">
-                    Одлично! Немаш слаба област под 70%.
-                    Продолжи со повторување за да го задржиш знаењето.
-                </p>
-            `;
-        } else {
-            const weakLabels = weakestCategories
-                .map(w => w.label)
-                .join(", ");
-
-            html += `
-                <p>
-                    <strong>Препорака:</strong><br>
-                    Најдобро ги знаеш <strong>${escapeHtml(bestCategory.label)}</strong>,
-                    но треба повеќе да вежбаш
-                    <strong>${escapeHtml(weakLabels)}</strong>.
-                </p>
-            `;
-
-            html += `
-                <p>
-                    <em>${escapeHtml(makeSmartRecommendation(weakestCategories, result.questionResults))}</em>
-                </p>
+                <div class="final-message">
+                    ${escapeHtml(makeFinalMessage(grade, weakestCategories, result.questionResults))}
+                </div>
             `;
         }
 
         html += `</div>`;
 
-        scoreArea.innerHTML = html;
+        if (includeRecommendation) {
+            html += `
+                <div class="question-block learning-plan">
+                    <h3>Резултат по области</h3>
+            `;
+
+            rows.forEach(row => {
+                html += `
+                    <p>
+                        ${escapeHtml(row.label)}:
+                        <strong>${row.percent}%</strong>
+                    </p>
+                `;
+            });
+
+            html += `</div>`;
+        }
+
+        return html;
+    }
+
+    function showLearningPlan(result) {
+        const scoreArea = document.getElementById('scoreArea');
+        scoreArea.innerHTML = buildScoreSummary(result, "Поени и оценка", true);
     }
 
     function makeSmartRecommendation(weakestCategories, questionResults) {
@@ -658,7 +895,7 @@
         const sentence = q.source_sentence || q.question;
 
         if (q.category === "pricini_posledici") {
-            return `Повтори го делот каде се објаснува зошто се случува ова: „${sentence}“.`;
+            return `Повтори го делот каде се објаснува причината или последицата: „${sentence}“.`;
         }
 
         if (q.category === "likovi") {
@@ -666,7 +903,7 @@
         }
 
         if (q.category === "nastani") {
-            return `Повтори го редоследот на настаните во делот: „${sentence}“.`;
+            return `Повтори го редоследот и важните поими од делот: „${sentence}“.`;
         }
 
         if (q.category === "zaklucoci") {
@@ -758,12 +995,8 @@
     function checkPracticeAnswers() {
         const result = evaluateQuestions(practiceQuestions, "practice");
 
-        document.getElementById('practiceScore').innerHTML = `
-            <h3>
-                Резултат од дополнителна вежба:
-                ${result.score} / ${result.total}
-            </h3>
-        `;
+        document.getElementById('practiceScore').innerHTML =
+            buildScoreSummary(result, "Резултат од дополнителна вежба", false);
     }
 
     async function generateFlashcards() {
@@ -872,4 +1105,3 @@
 
 </body>
 </html>
-
